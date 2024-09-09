@@ -7,7 +7,7 @@ let ADMIN_PASSWORD = "choreMaster123";
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 async function loadData() {
-    const response = await fetch('http://localhost:3000/api/data');
+    const response = await fetch('/.netlify/functions/api');
     const data = await response.json();
     chores = data.chores || [];
     bonusPoints = data.bonusPoints || [];
@@ -17,7 +17,7 @@ async function loadData() {
 }
 
 async function saveData() {
-    await fetch('http://localhost:3000/api/data', {
+    await fetch('/.netlify/functions/api', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
