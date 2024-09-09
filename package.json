@@ -9,5 +9,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "faunadb": "^4.8.0"
+  },
+  "devDependencies": {},
   "description": ""
 }
