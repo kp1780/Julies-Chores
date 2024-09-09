@@ -251,7 +251,7 @@ function purchaseItem(name, cost) {
                 cost: cost,
                 date: new Date().toISOString()
             });
-            saveStoreHistory();
+            saveData();
             alert(`You have purchased ${name}!`);
             renderBonusPoints();
             renderChoreChart();
@@ -315,7 +315,7 @@ function addStoreItem() {
     const cost = parseInt(prompt('Enter item cost:'));
     if (name && !isNaN(cost)) {
         storeItems.push({ name, cost });
-        saveStoreItems();
+        saveData();
         renderStore();
     }
 }
@@ -326,7 +326,7 @@ function editStoreItem(index) {
     const cost = parseInt(prompt('Enter new item cost:', item.cost));
     if (name && !isNaN(cost)) {
         storeItems[index] = { name, cost };
-        saveStoreItems();
+        saveData();
         renderStore();
     }
 }
@@ -334,13 +334,9 @@ function editStoreItem(index) {
 function deleteStoreItem(index) {
     if (confirm('Are you sure you want to delete this store item?')) {
         storeItems.splice(index, 1);
-        saveStoreItems();
+        saveData();
         renderStore();
     }
-}
-
-function saveStoreItems() {
-    localStorage.setItem('storeItems', JSON.stringify(storeItems));
 }
 
 function resetWeeklyChores() {
@@ -357,7 +353,7 @@ function resetWeeklyChores() {
             });
             chore.lastCompleted = {};
         });
-        saveChores();
+        saveData();
         renderChoreChart();
     }
 }
@@ -370,7 +366,7 @@ function resetChore(choreIndex, day) {
         if (chores[choreIndex].lastCompleted && chores[choreIndex].lastCompleted[day]) {
             delete chores[choreIndex].lastCompleted[day];
         }
-        saveChores();
+        saveData();
         renderChoreChart();
     }
 }
@@ -390,9 +386,7 @@ function renderStoreHistory() {
                     <span class="purchase-date">${formattedDate}</span>: 
                     <span class="purchase-item">${purchase.name}</span> - 
                     <span class="purchase-cost">${purchase.cost} points</span>
-                    ${document.getElementById('adminMode').checked ? 
-                        `<button class="admin-button" onclick="removePurchase(${index})">Remove</button>` : 
-                        ''}
+                    <button class="admin-button" onclick="removePurchase(${index})">Remove</button>
                 </li>
             `;
         });
@@ -408,17 +402,12 @@ function removePurchase(index) {
             points: removedPurchase.cost,
             timestamp: new Date().toISOString()
         });
-        saveStoreHistory();
-        saveBonusPoints();
+        saveData();
         renderStoreHistory();
         renderBonusPoints();
         renderChoreChart();
         alert(`Purchase removed and ${removedPurchase.cost} points credited back.`);
     }
-}
-
-function saveStoreHistory() {
-    localStorage.setItem('storeHistory', JSON.stringify(storeHistory));
 }
 
 function renderAdminPanel() {
@@ -433,6 +422,7 @@ function renderAdminPanel() {
             <h2>Admin Panel</h2>
             <button class="admin-button" onclick="addChore()">Add Chore</button>
             <button class="admin-button" onclick="changeAdminPassword()">Change Password</button>
+            <button class="admin-button" onclick="editTotalPoints()">Edit Total Points</button>
         `;
     }
 }
@@ -441,7 +431,7 @@ function changeAdminPassword() {
     const newPassword = prompt("Enter new admin password:");
     if (newPassword) {
         ADMIN_PASSWORD = newPassword;
-        localStorage.setItem('adminPassword', newPassword);
+        saveData();
         alert("Admin password changed successfully!");
     }
 }
@@ -456,17 +446,21 @@ function editTotalPoints() {
             points: difference,
             timestamp: new Date().toISOString()
         });
-        saveBonusPoints();
+        saveData();
         renderChoreChart();
         renderBonusPoints();
         alert(`Total points adjusted by ${difference}. New total: ${newTotal}`);
     }
 }
 
-renderChoreChart();
-renderBonusPoints();
-renderStore();
-renderStoreHistory();
-renderAdminPanel();
+async function initializeApp() {
+    await loadData();
+    renderChoreChart();
+    renderBonusPoints();
+    renderStore();
+    renderStoreHistory();
+    renderAdminPanel();
+    resetWeeklyChores();
+}
 
-resetWeeklyChores();
+initializeApp();
