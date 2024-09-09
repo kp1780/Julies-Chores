@@ -1,36 +1,20 @@
-let chores = [];
-let bonusPoints = [];
-let storeItems = [];
-let storeHistory = [];
-let ADMIN_PASSWORD = "choreMaster123";
+let chores = JSON.parse(localStorage.getItem('chores')) || [
+    { name: 'Clean room', points: 2 },
+    { name: 'Fold towels', points: 2 }
+];
 
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-async function loadData() {
-    const response = await fetch('/.netlify/functions/api');
-    const data = await response.json();
-    chores = data.chores || [];
-    bonusPoints = data.bonusPoints || [];
-    storeItems = data.storeItems || [];
-    storeHistory = data.storeHistory || [];
-    ADMIN_PASSWORD = data.adminPassword || "choreMaster123";
-}
+let bonusPoints = JSON.parse(localStorage.getItem('bonusPoints')) || [];
+let storeItems = JSON.parse(localStorage.getItem('storeItems')) || [
+    { name: 'Extra TV time', cost: 50 },
+    { name: 'Special treat', cost: 100 },
+    { name: 'Choose dinner', cost: 150 }
+];
 
-async function saveData() {
-    await fetch('/.netlify/functions/api', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            chores,
-            bonusPoints,
-            storeItems,
-            storeHistory,
-            adminPassword: ADMIN_PASSWORD
-        }),
-    });
-}
+let storeHistory = JSON.parse(localStorage.getItem('storeHistory')) || [];
+
+let ADMIN_PASSWORD = localStorage.getItem('adminPassword') || "choreMaster123";
 
 function renderChoreChart() {
     const table = document.querySelector('#choreChart');
@@ -51,7 +35,7 @@ function renderChoreChart() {
         row.innerHTML = `
             <td class="chore-column">
                 <div class="chore-name">${chore.name}</div>
-                <div class="chore-points">Points: ${chore.points || 0}</div>
+                <div class="chore-points">${chore.points} points</div>
                 ${adminMode ? `
                     <button class="admin-button edit" onclick="editChore(${index})">Edit</button>
                     <button class="admin-button delete" onclick="deleteChore(${index})">Delete</button>
@@ -60,7 +44,7 @@ function renderChoreChart() {
             ${days.map((day, dayIndex) => `
                 <td class="day-column day-${dayIndex}">
                     ${adminMode ? 
-                        `<input type="number" value="${chore[day] || 0}" onchange="updatePoints(${index}, '${day}', this.value)">
+                        `<input type="number" value="${chore[day] || 0}" onchange="updatePoints(${index}, '${day}', this.value)" style="width: 50px; margin-bottom: 5px; font-size: 1.2em;">
                          <br>
                          <button class="reset-chore-button" onclick="resetChore(${index}, '${day}')">Reset</button>` :
                         `<button class="chore-button ${(chore.lastCompleted && chore.lastCompleted[day] === currentDate) ? 'completed' : ''}"
@@ -87,16 +71,21 @@ function renderChoreChart() {
     table.appendChild(totalRow);
 
     const totalScore = calculateTotalScore();
-    document.getElementById('totalScore').textContent = `Total Score: ${totalScore}`;
+    const totalScoreElement = document.getElementById('totalScore');
+    totalScoreElement.innerHTML = `Total Score: ${totalScore}`;
+    if (document.getElementById('adminMode').checked) {
+        totalScoreElement.innerHTML += ` <button class="admin-button" onclick="editTotalPoints()">Edit Total Points</button>`;
+    }
 
-    saveData();
+    saveChores();
+    saveBonusPoints();
 
     renderAdminPanel();
 }
 
 function updatePoints(choreIndex, day, value) {
     chores[choreIndex][day] = parseInt(value) || 0;
-    saveData();
+    saveChores();
     renderChoreChart();
 }
 
@@ -148,6 +137,14 @@ function calculateTotalScore() {
     return choreTotal + bonusTotal;
 }
 
+function saveChores() {
+    localStorage.setItem('chores', JSON.stringify(chores));
+}
+
+function saveBonusPoints() {
+    localStorage.setItem('bonusPoints', JSON.stringify(bonusPoints));
+}
+
 function toggleAdminMode() {
     const adminMode = document.getElementById('adminMode').checked;
     if (adminMode) {
@@ -170,7 +167,7 @@ function addBonus() {
     if (note && !isNaN(points)) {
         const timestamp = new Date().toISOString();
         bonusPoints.push({ note, points, timestamp });
-        saveData();
+        saveBonusPoints();
         renderBonusPoints();
         renderChoreChart();
     }
@@ -179,7 +176,7 @@ function addBonus() {
 function deleteBonus(index) {
     if (confirm('Are you sure you want to delete these bonus points?')) {
         bonusPoints.splice(index, 1);
-        saveData();
+        saveBonusPoints();
         renderBonusPoints();
         renderChoreChart();
     }
@@ -251,7 +248,7 @@ function purchaseItem(name, cost) {
                 cost: cost,
                 date: new Date().toISOString()
             });
-            saveData();
+            saveStoreHistory();
             alert(`You have purchased ${name}!`);
             renderBonusPoints();
             renderChoreChart();
@@ -315,7 +312,7 @@ function addStoreItem() {
     const cost = parseInt(prompt('Enter item cost:'));
     if (name && !isNaN(cost)) {
         storeItems.push({ name, cost });
-        saveData();
+        saveStoreItems();
         renderStore();
     }
 }
@@ -326,7 +323,7 @@ function editStoreItem(index) {
     const cost = parseInt(prompt('Enter new item cost:', item.cost));
     if (name && !isNaN(cost)) {
         storeItems[index] = { name, cost };
-        saveData();
+        saveStoreItems();
         renderStore();
     }
 }
@@ -334,9 +331,13 @@ function editStoreItem(index) {
 function deleteStoreItem(index) {
     if (confirm('Are you sure you want to delete this store item?')) {
         storeItems.splice(index, 1);
-        saveData();
+        saveStoreItems();
         renderStore();
     }
+}
+
+function saveStoreItems() {
+    localStorage.setItem('storeItems', JSON.stringify(storeItems));
 }
 
 function resetWeeklyChores() {
@@ -353,7 +354,7 @@ function resetWeeklyChores() {
             });
             chore.lastCompleted = {};
         });
-        saveData();
+        saveChores();
         renderChoreChart();
     }
 }
@@ -366,7 +367,7 @@ function resetChore(choreIndex, day) {
         if (chores[choreIndex].lastCompleted && chores[choreIndex].lastCompleted[day]) {
             delete chores[choreIndex].lastCompleted[day];
         }
-        saveData();
+        saveChores();
         renderChoreChart();
     }
 }
@@ -386,7 +387,9 @@ function renderStoreHistory() {
                     <span class="purchase-date">${formattedDate}</span>: 
                     <span class="purchase-item">${purchase.name}</span> - 
                     <span class="purchase-cost">${purchase.cost} points</span>
-                    <button class="admin-button" onclick="removePurchase(${index})">Remove</button>
+                    ${document.getElementById('adminMode').checked ? 
+                        `<button class="admin-button" onclick="removePurchase(${index})">Remove</button>` : 
+                        ''}
                 </li>
             `;
         });
@@ -402,12 +405,17 @@ function removePurchase(index) {
             points: removedPurchase.cost,
             timestamp: new Date().toISOString()
         });
-        saveData();
+        saveStoreHistory();
+        saveBonusPoints();
         renderStoreHistory();
         renderBonusPoints();
         renderChoreChart();
         alert(`Purchase removed and ${removedPurchase.cost} points credited back.`);
     }
+}
+
+function saveStoreHistory() {
+    localStorage.setItem('storeHistory', JSON.stringify(storeHistory));
 }
 
 function renderAdminPanel() {
@@ -422,7 +430,6 @@ function renderAdminPanel() {
             <h2>Admin Panel</h2>
             <button class="admin-button" onclick="addChore()">Add Chore</button>
             <button class="admin-button" onclick="changeAdminPassword()">Change Password</button>
-            <button class="admin-button" onclick="editTotalPoints()">Edit Total Points</button>
         `;
     }
 }
@@ -431,7 +438,7 @@ function changeAdminPassword() {
     const newPassword = prompt("Enter new admin password:");
     if (newPassword) {
         ADMIN_PASSWORD = newPassword;
-        saveData();
+        localStorage.setItem('adminPassword', newPassword);
         alert("Admin password changed successfully!");
     }
 }
@@ -446,21 +453,19 @@ function editTotalPoints() {
             points: difference,
             timestamp: new Date().toISOString()
         });
-        saveData();
+        saveBonusPoints();
         renderChoreChart();
         renderBonusPoints();
         alert(`Total points adjusted by ${difference}. New total: ${newTotal}`);
     }
 }
 
-async function initializeApp() {
-    await loadData();
-    renderChoreChart();
-    renderBonusPoints();
-    renderStore();
-    renderStoreHistory();
-    renderAdminPanel();
-    resetWeeklyChores();
-}
+// ... (keep other existing functions)
 
-initializeApp();
+renderChoreChart();
+renderBonusPoints();
+renderStore();
+renderStoreHistory();
+renderAdminPanel();
+
+resetWeeklyChores();
